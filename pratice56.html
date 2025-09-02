@@ -1,0 +1,410 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, viewport-fit=cover"
+    />
+    <title>City Weather & Local Time</title>
+    <meta
+      name="description"
+      content="Simple weather and local time lookup for any city."
+    />
+    <style>
+    /* Color palette (exactly 5 colors):
+   - Primary: #2563eb (blue)
+   - Neutral: #ffffff (white)
+   - Neutral: #1f2937 (gray-800 text)
+   - Neutral: #f3f4f6 (gray-100 background)
+   - Neutral (borders): #e5e7eb (gray-200)
+*/
+
+/* Reset & base */
+* {
+  box-sizing: border-box;
+}
+html,
+body {
+  height: 100%;
+}
+body {
+  margin: 0;
+  font-family:
+    ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, Noto Sans, "Helvetica Neue", Arial, "Apple Color Emoji", "Segoe UI Emoji";
+  color: #1f2937;
+  background: #f3f4f6;
+  line-height: 1.55;
+}
+
+/* Layout */
+.site-header {
+  padding: 2rem 1rem 1rem;
+  text-align: center;
+}
+.title {
+  margin: 0;
+  font-size: 1.75rem;
+  letter-spacing: -0.01em;
+}
+.subtitle {
+  margin: 0.25rem 0 0;
+  color: #1f2937; /* keep within palette, rely on opacity for hierarchy */
+  opacity: 0.8;
+}
+.container {
+  max-width: 760px;
+  margin: 0 auto;
+  padding: 1rem;
+}
+.site-footer {
+  text-align: center;
+  padding: 2rem 1rem 3rem;
+  color: #1f2937;
+  opacity: 0.8;
+  font-size: 0.95rem;
+}
+
+/* Cards */
+.search-card,
+.card,
+.result {
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+}
+.search-card {
+  padding: 1rem;
+}
+.result {
+  margin-top: 1rem;
+  padding: 1rem;
+}
+.card {
+  padding: 1rem;
+}
+
+/* Search form */
+.search-form .label {
+  display: block;
+  font-weight: 600;
+  margin-bottom: 0.25rem;
+}
+.row {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+input[type="text"] {
+  flex: 1;
+  height: 44px;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  padding: 0 0.75rem;
+  font-size: 1rem;
+  outline: none;
+  background: #ffffff;
+  color: #1f2937;
+}
+input[type="text"]::placeholder {
+  color: #1f2937;
+  opacity: 0.5;
+}
+input[type="text"]:focus {
+  border-color: #2563eb;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
+}
+button {
+  height: 44px;
+  padding: 0 1rem;
+  background: #2563eb;
+  color: #ffffff;
+  border: none;
+  border-radius: 10px;
+  font-weight: 600;
+  cursor: pointer;
+}
+button:hover {
+  filter: brightness(0.95);
+}
+button:active {
+  transform: translateY(1px);
+}
+.hint {
+  margin-top: 0.5rem;
+  color: #1f2937;
+  opacity: 0.7;
+  font-size: 0.95rem;
+}
+
+/* Status */
+.status {
+  min-height: 1.25rem;
+  margin-top: 0.5rem;
+  color: #1f2937;
+}
+
+/* Result */
+.city-name {
+  margin: 0 0 0.75rem 0;
+  font-size: 1.25rem;
+}
+.grid {
+  display: grid;
+  gap: 0.75rem;
+}
+@media (min-width: 720px) {
+  .grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+.card-title {
+  margin: 0 0 0.25rem 0;
+  font-size: 1rem;
+  color: #1f2937;
+  opacity: 0.9;
+}
+.big {
+  margin: 0.25rem 0 0.25rem;
+  font-size: 2rem;
+  font-weight: 700;
+}
+.meta {
+  margin: 0.25rem 0 0;
+  color: #1f2937;
+  opacity: 0.8;
+}
+
+/* Accessibility helper */
+.sr-only {
+  position: absolute !important;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+    </style>
+  </head>
+  <body>
+    <header class="site-header">
+      <h1 class="title text-balance">City Weather & Local Time</h1>
+      <p class="subtitle">Fast, free, no sign-up.</p>
+    </header>
+
+    <main class="container" role="main">
+      <section class="search-card" aria-labelledby="search-heading">
+        <h2 id="search-heading" class="sr-only">Search for a city</h2>
+        <form id="search-form" class="search-form" autocomplete="off">
+          <label for="city-input" class="label">City</label>
+          <div class="row">
+            <input
+              id="city-input"
+              name="city"
+              type="text"
+              placeholder="e.g., London, Tokyo, New York"
+              required
+              aria-required="true"
+            />
+            <button id="search-btn" type="submit">Get Weather</button>
+          </div>
+          <p class="hint">
+            No API key needed. Uses Open‑Meteo.
+          </p>
+        </form>
+        <div id="status" class="status" role="status" aria-live="polite"></div>
+      </section>
+
+      <section id="result" class="result" aria-labelledby="result-heading" hidden>
+        <h2 id="result-heading" class="city-name"></h2>
+
+        <div class="grid">
+          <article class="card">
+            <h3 class="card-title">Local Time</h3>
+            <p class="big" id="local-time" aria-live="polite">—</p>
+            <p class="meta" id="timezone-label">—</p>
+          </article>
+
+          <article class="card">
+            <h3 class="card-title">Current Weather</h3>
+            <p class="big"><span id="temp">—</span> °C</p>
+            <p class="meta" id="desc">—</p>
+            <p class="meta">Wind: <span id="wind">—</span> m/s</p>
+          </article>
+        </div>
+      </section>
+    </main>
+
+    <footer class="site-footer">
+      <p>
+        Data by
+        <a href="https://open-meteo.com/" target="_blank" rel="noopener noreferrer">Open‑Meteo</a>.
+        Built with HTML, CSS, JS. Python CLI included.
+      </p>
+    </footer>
+
+    <script >const $ = (sel) => document.querySelector(sel)
+
+const statusEl = $("#status")
+const resultSection = $("#result")
+const cityTitle = resultSection.querySelector(".city-name")
+const timeEl = $("#local-time")
+const tzEl = $("#timezone-label")
+const tempEl = $("#temp")
+const descEl = $("#desc")
+const windEl = $("#wind")
+
+let currentTz = null
+let clockTimer = null
+
+function setStatus(msg, type = "info") {
+  statusEl.textContent = msg || ""
+  statusEl.style.color = type === "error" ? "#b91c1c" : "#1f2937"
+}
+
+function show(el) {
+  el.hidden = false
+}
+function hide(el) {
+  el.hidden = true
+}
+
+// WMO weather code mapping (Open-Meteo)
+function describeWMO(code) {
+  const map = {
+    0: "Clear sky",
+    1: "Mainly clear",
+    2: "Partly cloudy",
+    3: "Overcast",
+    45: "Fog",
+    48: "Depositing rime fog",
+    51: "Light drizzle",
+    53: "Moderate drizzle",
+    55: "Dense drizzle",
+    56: "Light freezing drizzle",
+    57: "Dense freezing drizzle",
+    61: "Slight rain",
+    63: "Moderate rain",
+    65: "Heavy rain",
+    66: "Light freezing rain",
+    67: "Heavy freezing rain",
+    71: "Slight snow",
+    73: "Moderate snow",
+    75: "Heavy snow",
+    77: "Snow grains",
+    80: "Slight rain showers",
+    81: "Moderate rain showers",
+    82: "Violent rain showers",
+    85: "Slight snow showers",
+    86: "Heavy snow showers",
+    95: "Thunderstorm",
+    96: "Thunderstorm with slight hail",
+    99: "Thunderstorm with heavy hail",
+  }
+  return map[code] || `Code ${code}`
+}
+
+async function geocodeCity(name) {
+  const url = `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(name)}&count=1&language=en&format=json`
+  const res = await fetch(url)
+  if (!res.ok) throw new Error("Geocoding failed")
+  const data = await res.json()
+  if (!data || !data.results || data.results.length === 0) {
+    throw new Error("City not found")
+  }
+  const r = data.results[0]
+  return {
+    name: r.name,
+    country: r.country,
+    admin1: r.admin1,
+    lat: r.latitude,
+    lon: r.longitude,
+    timezone: r.timezone, // IANA tz
+  }
+}
+
+async function fetchWeather(lat, lon, timezone) {
+  const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current_weather=true&timezone=${encodeURIComponent(timezone)}`
+  const res = await fetch(url)
+  if (!res.ok) throw new Error("Weather request failed")
+  const data = await res.json()
+  if (!data.current_weather) throw new Error("No current weather data")
+  return {
+    temperature: data.current_weather.temperature,
+    windspeed: data.current_weather.windspeed,
+    weathercode: data.current_weather.weathercode,
+  }
+}
+
+function startClock(timezone) {
+  if (clockTimer) clearInterval(clockTimer)
+  currentTz = timezone
+  const render = () => {
+    try {
+      const now = new Date()
+      const fmt = new Intl.DateTimeFormat(undefined, {
+        timeZone: currentTz,
+        hour: "2-digit",
+        minute: "2-digit",
+        second: "2-digit",
+        weekday: "short",
+        year: "numeric",
+        month: "short",
+        day: "2-digit",
+      })
+      timeEl.textContent = fmt.format(now)
+    } catch {
+      timeEl.textContent = "—"
+    }
+  }
+  render()
+  clockTimer = setInterval(render, 1000)
+}
+
+async function handleSearch(city) {
+  setStatus("Looking up city…")
+  hide(resultSection)
+  try {
+    const place = await geocodeCity(city)
+    setStatus("Fetching weather…")
+    const wx = await fetchWeather(place.lat, place.lon, place.timezone)
+
+    // Update UI
+    const loc = [place.name, place.admin1, place.country].filter(Boolean).join(", ")
+    cityTitle.textContent = loc
+    tempEl.textContent = Math.round(wx.temperature)
+    descEl.textContent = describeWMO(wx.weathercode)
+    windEl.textContent = wx.windspeed.toFixed(1)
+    tzEl.textContent = place.timezone
+
+    startClock(place.timezone)
+    show(resultSection)
+    setStatus("")
+  } catch (err) {
+    console.error(err)
+    setStatus(err.message || "Something went wrong", "error")
+  }
+}
+
+document.addEventListener("DOMContentLoaded", () => {
+  const form = document.getElementById("search-form")
+  const input = document.getElementById("city-input")
+
+  form.addEventListener("submit", (e) => {
+    e.preventDefault()
+    const city = input.value.trim()
+    if (!city) return
+    handleSearch(city)
+  })
+
+  // Demo: pre-fill and fetch on load
+  input.value = "New York"
+  handleSearch(input.value)
+})
+</script>
+  </body>
+</html>
